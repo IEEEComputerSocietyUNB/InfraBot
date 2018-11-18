@@ -45,10 +45,16 @@ class Chatterbot:
 		)
 		self.dispatcher.add_handler(remove_repo_handler)
 		
-		# remove_conv_handler
+		update_handler = ConversationHandler(
+			entry_points=[CommandHandler('update', self.update, pass_args=True)],
+			states={
+				self.REPO: [MessageHandler(Filters.text, self.upd_get_repo)]
+			},
+			fallbacks=[CommandHandler('cancel', self.cancel)]
+		)
+		self.dispatcher.add_handler(update_handler)
 
 		update_handler = CommandHandler("update", self.update, pass_args=True)
-		self.dispatcher.add_handler(update_handler)
 
 		run_handler = CommandHandler("run", self.run, pass_args=True)
 		self.dispatcher.add_handler(run_handler)
@@ -79,6 +85,7 @@ class Chatterbot:
 	def add_repo(self, bot, update, args):
 		admin = update.message["chat"]["username"]
 		if not self.check_admin_permission(admin, bot, update):
+			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
 			return False
 		if args == []:
 			msg = "Qual repositório você quer adicionar?"
@@ -99,8 +106,7 @@ class Chatterbot:
 			return ConversationHandler.END
 
 	def add_get_repo(self, bot, update):
-		repo = update.message.text
-		repo = repo.split()
+		repo = update.message.text.split()
 		self.add_repo(bot, update, repo)
 
 		return ConversationHandler.END
@@ -109,9 +115,10 @@ class Chatterbot:
 		print("Pass")
 		return ConversationHandler.END
 
-	def remove_repo(self, bot, update):
+	def remove_repo(self, bot, update, args):
 		admin = update.message["chat"]["username"]
 		if not self.check_admin_permission(admin, bot, update):
+			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
 			return False
 		if args == []:
 			msg = "Qual repositório você quer adicionar?"
@@ -127,19 +134,44 @@ class Chatterbot:
 					update.message.reply_text(f'Repositório {repo} removido com sucesso.')
 
 				except:
-					update.message.reply_text(f'Não achei o repositório {repo}.')
+					update.message.reply_text(f'Repositório {repo} não encontrado.')
 				print(repo)
 			return ConversationHandler.END
 
 	def rm_get_repo(self, bot, update):
-		repo = update.message.text
-		repo = repo.split()
+		repo = update.message.text.split()
 		self.remove_repo(bot, update, repo)
 
 		return ConversationHandler.END
 
-	def update(self, bot, update):
-		pass
+	def update(self, bot, update, args):
+		user = update.message["chat"]["username"]
+		if not self.check_user_permission(user, bot, update):
+			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+			return False
+		if args == []:
+			msg = "Qual repositório você quer atualizar?"
+			bot.send_message(chat_id=update.message.chat_id, text=msg)
+			return self.REPO 
+		else:
+			for repo in args:
+				try:
+					msg = subprocess.run(
+						f'cd repos/{repo} && git pull origin master',
+						shell=True
+					)
+					update.message.reply_text(f'Ação finalizada com sucesso.')
+
+				except Exception as e:
+					update.message.reply_text(f'Repositório {repo} não encontrado. {e}')
+				print(repo)
+			return ConversationHandler.END
+
+	def upd_get_repo(self, bot, update):
+		repo = update.message.text.split()
+		self.update(bot, update, repo)
+
+		return ConversationHandler.END
 
 	def run(self, bot, update):
 		pass
@@ -163,18 +195,15 @@ class Chatterbot:
 			all_adms = adm_file.read().splitlines()
 			if admin in all_adms:
 				return True
-		bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
 		return False
 
-	def check_user_permission(self, user, user_file="user.txt"):
+	def check_user_permission(self, user, bot, update, user_file="user.txt"):
 		with open(user_file, 'r') as usr_file:
 			all_usrs = usr_file.read().splitlines()
 			if user in all_usrs:
 				return True
-		bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
-
-		# bot.reply_text()
-		return check_admin_permission(user)
+		# bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+		return self.check_admin_permission(user, bot, update)
 
 	def run_bot(self):
 		# Start the Bot
