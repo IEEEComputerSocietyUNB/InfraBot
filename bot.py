@@ -9,17 +9,18 @@ from telegram.ext import Updater, CommandHandler, Dispatcher,\
 	MessageHandler, Filters, ConversationHandler
 
 class Chatterbot:
+	repository = []
 
 	def __init__(self, token):
-		self.REPO = range(1)
+		self.REPO, self.CHOICE, self.BOT, self.UPDATE = range(4)
 		logging.basicConfig(
 			format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 			level=logging.INFO,
 		)
 		self.logger = logging.getLogger("LOG")
-		self.app = Bot(token)
+		self.bot = Bot(token)
 		self.updater = Updater(token)
-		self.dispatcher = self.updater.dispatcher
+		self.dispatcher = self.updater.dispatcher 
 
 		start_handler = CommandHandler("start", self.start)
 		self.dispatcher.add_handler(start_handler)
@@ -30,36 +31,44 @@ class Chatterbot:
 		add_repo_handler = ConversationHandler(
 			entry_points=[CommandHandler('add', self.add_repo, pass_args=True)],
 			states={
-				self.REPO: [MessageHandler(Filters.text, self.add_get_repo)]
+				self.REPO: [MessageHandler(Filters.text, self.get_repo)],
+				self.CHOICE: [self.git_add(self.repository)]
 			},
 			fallbacks=[CommandHandler('cancel', self.cancel)]
 		)
 		self.dispatcher.add_handler(add_repo_handler)
 
-		remove_repo_handler = ConversationHandler(
-			entry_points=[CommandHandler('remove', self.remove_repo, pass_args=True)],
-			states={
-				self.REPO: [MessageHandler(Filters.text, self.rm_get_repo)]
-			},
-			fallbacks=[CommandHandler('cancel', self.cancel)]
-		)
-		self.dispatcher.add_handler(remove_repo_handler)
+		# remove_repo_handler = ConversationHandler(
+		# 	entry_points=[CommandHandler('remove', self.remove_repo, pass_args=True)],
+		# 	states={
+		# 		self.REPO: [MessageHandler(Filters.text, self.rm_get_repo)]
+		# 	},
+		# 	fallbacks=[CommandHandler('cancel', self.cancel)]
+		# )
+		# self.dispatcher.add_handler(remove_repo_handler)
 		
-		# remove_conv_handler
+		# update_handler = ConversationHandler(
+		# 	entry_points=[CommandHandler('remove', self.update, pass_args=True)],
+		# 	states={
+		# 		self.REPO: [MessageHandler(Filters.text, self.get_repo)]
+		# 	},
+		# 	fallbacks=[CommandHandler('cancel', self.cancel)]
+		# )
+		# self.dispatcher.add_handler(update_handler)
 
-		update_handler = CommandHandler("update", self.update, pass_args=True)
-		self.dispatcher.add_handler(update_handler)
+		# update_handler = CommandHandler("update", self.update, pass_args=True)
+		# self.dispatcher.add_handler(update_handler)
 
-		run_handler = CommandHandler("run", self.run, pass_args=True)
-		self.dispatcher.add_handler(run_handler)
+		# run_handler = CommandHandler("run", self.run, pass_args=True)
+		# self.dispatcher.add_handler(run_handler)
 		
-		# run_conv_handler
+		# # run_conv_handler
 
-		download_handler = CommandHandler("download", self.download, pass_args=True)
-		self.dispatcher.add_handler(download_handler)
+		# download_handler = CommandHandler("download", self.download, pass_args=True)
+		# self.dispatcher.add_handler(download_handler)
 
-		help_handler = CommandHandler("help", self.help)
-		self.dispatcher.add_handler(help_handler)
+		# help_handler = CommandHandler("help", self.help)
+		# self.dispatcher.add_handler(help_handler)
 
 
 	def start(self, bot, update):
@@ -70,40 +79,58 @@ class Chatterbot:
 		start_text = "Eu sou o bot da IEEE Computer Society UnB " \
 			"e gerencio o aplicativos da instituição. " \
 			"Digite /help para saber mais sobre meus comandos."
-		bot.send_message(chat_id=update.message.chat_id, text=start_text)
-		
-		start_text = "Agora vamos lá. Em que posso ajudá-lo?"
-		bot.send_message(chat_id=update.message.chat_id, text=start_text)
+		bot.send_message(chat_id=update.message.chat_id, text=start_text)       
+		bot.reply_text("Agora vamos lá. Em que posso ajudá-lo?")
 		return 
 
+	def get_repo(self, bot, update):
+		repo = update.message.text
+		self.repository = repo.split()
+		print("This is my repo", self.repository)
+		self.BOT = bot
+		self.UPDATE = update
+
+		return self.CHOICE
+
 	def add_repo(self, bot, update, args):
+		self.BOT = bot
+		self.UPDATE = update
 		admin = update.message["chat"]["username"]
-		if not self.check_admin_permission(admin, bot, update):
+		if not self.check_admin_permission(admin):
 			return False
-		if args == []:
-			msg = "Qual repositório você quer adicionar?"
-			bot.send_message(chat_id=update.message.chat_id, text=msg)
+		if args == [] and self.repository == []:
+			bot.send_message(chat_id=update.message.chat_id, text="Qual repositório você quer adicionar?")
 			return self.REPO 
 		else:
-			for repo in args:
-				try:
-					subprocess.run(
-						f'git clone https://github.com/ComputerSocietyUNB/{repo} repos/{repo}',
-						shell=True
-					)
-					update.message.reply_text(f'Repositório {repo} baixado com sucesso.')
+			self.git_add(args)
+			return ConversationHandler.END 
 
-				except:
-					update.message.reply_text(f'Não achei o repositório {repo}.')
-				print(repo)
-			return ConversationHandler.END
+	def git_add(self, repos):
+		print("I'm inside")
+		print(repos, self.repository)
+		if repos == []:
+			repos = self.repository
+		for repo in repos:
+			try:
+				subprocess.run(
+					f'git clone https://github.com/ComputerSocietyUNB/{repo} repos/{repo}',
+					shell=True
+				)
+				self.BOT.send_message(
+					chat_id=self.UPDATE.message.chat_id,
+					text=f'Repositório {repo} baixado com sucesso.'
+				)
+				print("Added", repo)
+			except Exception as e:
+				print("Couldn't add", repo, "\nError", e)
+				self.BOT.send_message(
+					chat_id=self.UPDATE.message.chat_id,
+					text=f'Não achei o repositório {repo}.'
+				)
+		self.repository = []
+		self.BOT, self.UPDATE = range(2)
+		return ConversationHandler.END 
 
-	def add_get_repo(self, bot, update):
-		repo = update.message.text
-		repo = repo.split()
-		self.add_repo(bot, update, repo)
-
-		return ConversationHandler.END
 
 	def cancel(self, bot, update):
 		print("Pass")
@@ -127,8 +154,7 @@ class Chatterbot:
 					update.message.reply_text(f'Repositório {repo} removido com sucesso.')
 
 				except:
-					update.message.reply_text(f'Não achei o repositório {repo}.')
-				print(repo)
+					update.message.reply_text(f'Repositório {repo} não encontrado.')
 			return ConversationHandler.END
 
 	def rm_get_repo(self, bot, update):
@@ -158,12 +184,12 @@ class Chatterbot:
 		bot.send_message(chat_id=update.message.chat_id, text=msg)
 		return True
 
-	def check_admin_permission(self, admin, bot, update, admin_file="admin.txt"):
+	def check_admin_permission(self, admin, admin_file="admin.txt"):
 		with open(admin_file, 'r') as adm_file:
 			all_adms = adm_file.read().splitlines()
 			if admin in all_adms:
 				return True
-		bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+		self.BOT.send_message(chat_id=self.UPDATE.message.chat_id, text="Você não tem autorização para esta ação.")
 		return False
 
 	def check_user_permission(self, user, user_file="user.txt"):
