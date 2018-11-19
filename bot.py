@@ -210,7 +210,7 @@ class Chatterbot:
 		self.update(bot, update, repo)
 		return ConversationHandler.END
 
-	def download(self, bot, update):
+	def download(self, bot, update, args):
 		user = update.message["chat"]["username"]
 		if not self.check_user_permission(user, bot, update):
 			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
