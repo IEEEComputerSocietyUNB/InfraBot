@@ -54,9 +54,13 @@ class Chatterbot:
 		)
 		self.dispatcher.add_handler(update_handler)
 
-		update_handler = CommandHandler("update", self.update, pass_args=True)
-
-		run_handler = CommandHandler("run", self.run, pass_args=True)
+		run_handler = ConversationHandler(
+			entry_points=[CommandHandler('run', self.run, pass_args=True)],
+			states={
+				self.REPO: [MessageHandler(Filters.text, self.run_get_repo)]
+			},
+			fallbacks=[CommandHandler('cancel', self.cancel)]
+		)
 		self.dispatcher.add_handler(run_handler)
 		
 		# run_conv_handler
@@ -173,8 +177,33 @@ class Chatterbot:
 
 		return ConversationHandler.END
 
-	def run(self, bot, update):
-		pass
+	def run(self, bot, update, args):
+		user = update.message["chat"]["username"]
+		if not self.check_user_permission(user, bot, update):
+			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+			return False
+		if args == []:
+			msg = "Qual repositório você quer atualizar?"
+			bot.send_message(chat_id=update.message.chat_id, text=msg)
+			return self.REPO 
+		else:
+			for repo in args:
+				try:
+					subprocess.run(
+						f'cd repos/{repo} && . venv/bin/activate && inv run',
+						shell=True
+					)
+					update.message.reply_text(f'Ação finalizada com sucesso.')
+
+				except Exception as e:
+					update.message.reply_text(f'Repositório {repo} não encontrado. {e}')
+				print(repo)
+			return ConversationHandler.END
+
+	def run_get_repo(self, bot, update):
+		repo = update.message.text.split()
+		self.update(bot, update, repo)
+		return ConversationHandler.END
 
 	def download(self, bot, update):
 		pass
