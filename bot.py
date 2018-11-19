@@ -230,9 +230,8 @@ class Chatterbot:
 					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/n1.txt', 'rb'))
 					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/n2.txt', 'rb'))
 					update.message.reply_text(f'Ação finalizada com sucesso.')
-
 				except Exception as e:
-					update.message.reply_text(f'Repositório {repo} não encontrado. {e}')
+					update.message.reply_text(f'Repositório {repo} com problema: {e}')
 				print(repo)
 			return ConversationHandler.END
 
