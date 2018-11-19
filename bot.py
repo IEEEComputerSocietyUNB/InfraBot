@@ -62,10 +62,14 @@ class Chatterbot:
 			fallbacks=[CommandHandler('cancel', self.cancel)]
 		)
 		self.dispatcher.add_handler(run_handler)
-		
-		# run_conv_handler
 
-		download_handler = CommandHandler("download", self.download, pass_args=True)
+		download_handler = ConversationHandler(
+			entry_points=[CommandHandler('download', self.download, pass_args=True)],
+			states={
+				self.REPO: [MessageHandler(Filters.text, self.download_get_repo)]
+			},
+			fallbacks=[CommandHandler('cancel', self.cancel)]
+		)
 		self.dispatcher.add_handler(download_handler)
 
 		help_handler = CommandHandler("help", self.help)
@@ -206,7 +210,35 @@ class Chatterbot:
 		return ConversationHandler.END
 
 	def download(self, bot, update):
-		pass
+		user = update.message["chat"]["username"]
+		if not self.check_user_permission(user, bot, update):
+			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+			return False
+		if args == []:
+			msg = "Qual repositório você quer atualizar?"
+			bot.send_message(chat_id=update.message.chat_id, text=msg)
+			return self.REPO 
+		else:
+			for repo in args:
+				try:
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p0.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p1.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p2.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n0.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n1.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n2.txt', 'rb'))
+					update.message.reply_text(f'Ação finalizada com sucesso.')
+
+				except Exception as e:
+					update.message.reply_text(f'Repositório {repo} não encontrado. {e}')
+				print(repo)
+			return ConversationHandler.END
+
+	def download_get_repo(self, bot, update):
+		repo = update.message.text.split()
+		self.update(bot, update, repo)
+		return ConversationHandler.END
+		
 
 	def help(self, bot, update):
 		msg = "/add - Add new Github repository\n" \
