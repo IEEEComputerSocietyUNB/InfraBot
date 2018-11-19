@@ -223,12 +223,12 @@ class Chatterbot:
 		else:
 			for repo in args:
 				try:
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p0.txt', 'rb'))
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p1.txt', 'rb'))
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/p2.txt', 'rb'))
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n0.txt', 'rb'))
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n1.txt', 'rb'))
-					bot.send_document(chat_id=chat_id, document=open('repos/{repo}/data_mine/amazon/n2.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/p0.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/p1.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/p2.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/n0.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/n1.txt', 'rb'))
+					bot.send_document(chat_id=chat_id, document=open(f'repos/{repo}/data_mine/amazon/n2.txt', 'rb'))
 					update.message.reply_text(f'Ação finalizada com sucesso.')
 
 				except Exception as e:
