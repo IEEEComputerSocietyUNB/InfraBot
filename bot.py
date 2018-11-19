@@ -212,12 +212,13 @@ class Chatterbot:
 
 	def download(self, bot, update, args):
 		user = update.message["chat"]["username"]
+		chat_id = update.message.chat_id
 		if not self.check_user_permission(user, bot, update):
-			bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
+			bot.send_message(chat_id=chat_id, text="Você não tem autorização para esta ação.")
 			return False
 		if args == []:
 			msg = "Qual repositório você quer atualizar?"
-			bot.send_message(chat_id=update.message.chat_id, text=msg)
+			bot.send_message(chat_id=chat_id, text=msg)
 			return self.REPO 
 		else:
 			for repo in args:
