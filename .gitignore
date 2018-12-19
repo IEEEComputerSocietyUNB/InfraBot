@@ -104,6 +104,7 @@ venv.bak/
 .mypy_cache/
 
 # user
+.idea
 user.txt
 admin.txt
 config.ini
