@@ -19,15 +19,16 @@ def check_admin_permission(admin, admin_file="config.ini"):
 
 
 def check_user_permission(user, user_file="config.ini"):
-    users = get_config("ADMIN", user_file)["admin"]
+    users = get_config("USER", user_file)["user"]
     all_users = [usr for usr in users.split()]
     if user in all_users:
         return True
     return check_admin_permission(user, user_file)
 
 
-class Chatterbot:
+class Infrabot:
 
+    # TODO: improve init
     def __init__(self, token):
         self.REPO = range(1)
         logging.basicConfig(
@@ -89,7 +90,7 @@ class Chatterbot:
         self.dispatcher.add_handler(download_handler)
 
         cmd_handler = ConversationHandler(
-            entry_points=[CommandHandler('download', self.cmd, pass_args=True)],
+            entry_points=[CommandHandler('cmd', self.cmd, pass_args=True)],
             states={
                 self.REPO: [MessageHandler(Filters.text, self.get_cmd)]
             },
@@ -100,6 +101,7 @@ class Chatterbot:
         help_handler = CommandHandler("help", self.help)
         self.dispatcher.add_handler(help_handler)
 
+    # TODO: review method
     def start(self, bot, update):
         """
         Start command to receive /start message on Telegram.
@@ -123,9 +125,10 @@ class Chatterbot:
         print("Pass")
         return ConversationHandler.END
 
+    # TODO: review method
     def add_repo(self, bot, update, args):
         admin = update.message["chat"]["username"]
-        if not check_admin_permission(admin, bot, update):
+        if not check_admin_permission(admin):
             bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
             return False
         if not args:
@@ -150,12 +153,13 @@ class Chatterbot:
                 print(repo)
             return ConversationHandler.END
 
+    # TODO: review method
     def remove_repo(self, bot, update, args):
         admin = update.message["chat"]["username"]
-        if not check_admin_permission(admin, bot, update):
+        if not check_admin_permission(admin):
             bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
             return False
-        if args == []:
+        if not args:
             msg = "Qual repositório você quer adicionar?"
             bot.send_message(chat_id=update.message.chat_id, text=msg)
             self.last_action = "remove_repo"
@@ -163,23 +167,27 @@ class Chatterbot:
         else:
             for repo in args:
                 try:
-                    subprocess.run(
+                    cmd = subprocess.run(
                         f'rm -rf repos/{repo}',
-                        shell=True
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     )
-                    update.message.reply_text(f'Repositório {repo} removido com sucesso.')
-
+                    if cmd.returncode == 0:
+                        update.message.reply_text(f'Repositório {repo} removido com sucesso.')
+                    else:
+                        update.message.reply_text(f'Status {cmd.returncode}, '
+                                                  f'comando falhou.\n{cmd.stderr.decode()}')
                 except:
                     update.message.reply_text(f'Repositório {repo} não encontrado.')
                 print(repo)
             return ConversationHandler.END
 
+    # TODO: improve method
     def update(self, bot, update, args):
         user = update.message["chat"]["username"]
-        if not check_user_permission(user, bot, update):
+        if not check_user_permission(user):
             bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
             return False
-        if args == []:
+        if not args:
             msg = "Qual repositório você quer atualizar?"
             bot.send_message(chat_id=update.message.chat_id, text=msg)
             self.last_action = "update"
@@ -187,23 +195,27 @@ class Chatterbot:
         else:
             for repo in args:
                 try:
-                    msg = subprocess.run(
+                    cmd = subprocess.run(
                         f'cd repos/{repo} && git pull origin master',
-                        shell=True
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     )
-                    update.message.reply_text(f'Ação finalizada com sucesso.')
-
+                    if cmd.returncode == 0:
+                        update.message.reply_text(f'Repositório {repo} atualizado com sucesso.')
+                    else:
+                        update.message.reply_text(f'Status {cmd.returncode}, '
+                                                  f'comando falhou.\n{cmd.stderr.decode()}')
                 except Exception as e:
                     update.message.reply_text(f'Repositório {repo} não encontrado. {e}')
                 print(repo)
             return ConversationHandler.END
 
+    # TODO: Improve method
     def run(self, bot, update, args):
         user = update.message["chat"]["username"]
-        if not check_user_permission(user, bot, update):
+        if not check_user_permission(user):
             bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
             return False
-        if args == []:
+        if not args:
             msg = "Qual repositório você quer atualizar?"
             bot.send_message(chat_id=update.message.chat_id, text=msg)
             self.last_action = "run"
@@ -222,13 +234,14 @@ class Chatterbot:
                 print(repo)
             return ConversationHandler.END
 
+    # TODO: improve download
     def download(self, bot, update, args):
         user = update.message["chat"]["username"]
         chat_id = update.message.chat_id
-        if not check_user_permission(user, bot, update):
+        if not check_user_permission(user):
             bot.send_message(chat_id=chat_id, text="Você não tem autorização para esta ação.")
             return False
-        if args == []:
+        if not args:
             msg = "Qual repositório você quer atualizar?"
             bot.send_message(chat_id=chat_id, text=msg)
             self.last_action = "download"
@@ -259,6 +272,9 @@ class Chatterbot:
         bot.send_message(chat_id=update.message.chat_id, text=msg)
         return True
 
+    def cmd(self):
+        pass
+
     def run_bot(self):
         # Start the Bot
         self.updater.start_polling()
@@ -277,7 +293,7 @@ if __name__ == "__main__":
     # Port is given by Heroku
     PORT = os.environ.get("PORT")
     if TOKEN is not None:
-        bot = Chatterbot(TOKEN)
+        bot = Infrabot(TOKEN)
         bot.updater.start_webhook(
             listen="0.0.0.0",
             port=int(PORT),
@@ -289,7 +305,7 @@ if __name__ == "__main__":
     else:
         try:
             token = get_config()["token"]
-            x = Chatterbot(token).run_bot()
+            x = Infrabot(token).run_bot()
         except FileNotFoundError:
             print("Configuration file not found.")
             sys.exit(1)
