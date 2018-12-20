@@ -37,6 +37,7 @@ class Infrabot:
         )
         self.logger = logging.getLogger("LOG")
         self.app = Bot(token)
+        self.org = "ComputerSocietyUNB"
         self.last_action = "start"
         self.updater = Updater(token)
         self.dispatcher = self.updater.dispatcher
@@ -108,7 +109,7 @@ class Infrabot:
         """
         print(update.message["chat"])
         start_text = "Eu sou o bot da IEEE Computer Society UnB " \
-                     "e gerencio o aplicativos da instituição. " \
+                     "e gerencio os repositórios da instituição. " \
                      "Digite /help para saber mais sobre meus comandos."
         bot.send_message(chat_id=update.message.chat_id, text=start_text)
 
@@ -122,7 +123,8 @@ class Infrabot:
         return ConversationHandler.END
 
     def cancel(self, bot, update):
-        print("Pass")
+        text = "Ação cancelada com sucesso."
+        bot.send_message(chat_id=update.message.chat_id, text=text)
         return ConversationHandler.END
 
     # TODO: review method
@@ -139,9 +141,12 @@ class Infrabot:
         else:
             for repo in args:
                 try:
+                    update.message.reply_text(f'Tentando baixar repositório {repo}.')
+                    if not os.path.exists(f"repos"):
+                        os.mkdir(f"repos")
                     cmd = subprocess.run(
-                        ["git", "clone", f"https://github.com/ComputerSocietyUNB/{repo} repos/{repo}"],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        f"git clone https://github.com/{self.org}/{repo} repos/{repo}",
+                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     )
                     if cmd.returncode == 0:
                         update.message.reply_text(f'Repositório {repo} baixado com sucesso.')
@@ -160,7 +165,7 @@ class Infrabot:
             bot.send_message(chat_id=update.message.chat_id, text="Você não tem autorização para esta ação.")
             return False
         if not args:
-            msg = "Qual repositório você quer adicionar?"
+            msg = "Qual repositório você quer remover? Comando case-sensitive!"
             bot.send_message(chat_id=update.message.chat_id, text=msg)
             self.last_action = "remove_repo"
             return self.REPO
@@ -169,7 +174,7 @@ class Infrabot:
                 try:
                     cmd = subprocess.run(
                         f'rm -rf repos/{repo}',
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     )
                     if cmd.returncode == 0:
                         update.message.reply_text(f'Repositório {repo} removido com sucesso.')
@@ -197,7 +202,7 @@ class Infrabot:
                 try:
                     cmd = subprocess.run(
                         f'cd repos/{repo} && git pull origin master',
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     )
                     if cmd.returncode == 0:
                         update.message.reply_text(f'Repositório {repo} atualizado com sucesso.')
@@ -273,6 +278,9 @@ class Infrabot:
         return True
 
     def cmd(self):
+        pass
+
+    def get_cmd(self):
         pass
 
     def run_bot(self):
